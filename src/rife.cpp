@@ -27,6 +27,7 @@ DEFINE_LAYER_CREATOR(Warp)
 RIFE::RIFE(int gpuid, bool _tta_mode, bool _tta_temporal_mode, bool _uhd_mode, int _num_threads, bool _rife_v2, bool _rife_v4)
 {
     vkdev = gpuid == -1 ? 0 : ncnn::get_gpu_device(gpuid);
+    printf("using gpu device %d dev: %p \n", gpuid, vkdev);
 
     rife_preproc = 0;
     rife_postproc = 0;
@@ -391,16 +392,21 @@ int RIFE::process(const ncnn::Mat& in0image, const ncnn::Mat& in1image, float ti
 
     if (rife_v4)
         return process_v4(in0image, in1image, timestep, outimage);
+    // print timestamp
+    auto start_tm = ncnn::get_current_time();
+    // printf("before process %f\n", ncnn::get_current_time());
 
     if (timestep == 0.f)
     {
         outimage = in0image;
+        printf("process 0.0 %f\n", ncnn::get_current_time() - start_tm);
         return 0;
     }
 
     if (timestep == 1.f)
     {
         outimage = in1image;
+        printf("process 1.0 %f\n", ncnn::get_current_time() - start_tm);
         return 0;
     }
 
@@ -1208,6 +1214,7 @@ int RIFE::process(const ncnn::Mat& in0image, const ncnn::Mat& in1image, float ti
     vkdev->reclaim_blob_allocator(blob_vkallocator);
     vkdev->reclaim_staging_allocator(staging_vkallocator);
 
+    printf("process %.1f %f\n", timestep, ncnn::get_current_time() - start_tm);
     return 0;
 }
 
@@ -2466,16 +2473,20 @@ int RIFE::process_v4(const ncnn::Mat& in0image, const ncnn::Mat& in1image, float
         // cpu only
         return process_cpu(in0image, in1image, timestep, outimage);
     }
+    auto start_tm = ncnn::get_current_time();
+    // printf("before process v4 %f\n", ncnn::get_current_time());
 
     if (timestep == 0.f)
     {
         outimage = in0image;
+    printf("after process v4 0.0 %f\n", ncnn::get_current_time() - start_tm);
         return 0;
     }
 
     if (timestep == 1.f)
     {
         outimage = in1image;
+    printf("after process v4 1.0 %f\n", ncnn::get_current_time() - start_tm);
         return 0;
     }
 
@@ -3198,20 +3209,24 @@ int RIFE::process_v4(const ncnn::Mat& in0image, const ncnn::Mat& in1image, float
     vkdev->reclaim_blob_allocator(blob_vkallocator);
     vkdev->reclaim_staging_allocator(staging_vkallocator);
 
+    printf("after process v4 %.1f %f\n", timestep, ncnn::get_current_time() - start_tm);
     return 0;
 }
 
 int RIFE::process_v4_cpu(const ncnn::Mat& in0image, const ncnn::Mat& in1image, float timestep, ncnn::Mat& outimage) const
 {
+    auto start_tm = ncnn::get_current_time();
     if (timestep == 0.f)
     {
         outimage = in0image;
+        printf("after process v4 %.1f %f\n", timestep, ncnn::get_current_time() - start_tm);
         return 0;
     }
 
     if (timestep == 1.f)
     {
         outimage = in1image;
+        printf("after process v4 %.1f %f\n", timestep, ncnn::get_current_time() - start_tm);
         return 0;
     }
 
@@ -4397,5 +4412,6 @@ int RIFE::process_v4_cpu(const ncnn::Mat& in0image, const ncnn::Mat& in1image, f
 #endif
     }
 
+    printf("after process v4 %.1f %f\n", timestep, ncnn::get_current_time() - start_tm);
     return 0;
 }

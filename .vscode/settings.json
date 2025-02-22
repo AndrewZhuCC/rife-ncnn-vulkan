@@ -1,0 +1,10 @@
+{
+    "workbench.colorCustomizations": {
+        "editor.lineHighlightBackground": "#1073cf2d",
+        "editor.lineHighlightBorder": "#9fced11f",
+        "activityBar.background": "#5D0E16",
+        "titleBar.activeBackground": "#82141F",
+        "titleBar.activeForeground": "#FEFBFB"
+    },
+    "cmake.sourceDirectory": "/Users/anzhi.zhu/projects/rife-ncnn-vulkan/src"
+}

@@ -1,6 +1,8 @@
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(CMAKE_C_COMPILER "/opt/homebrew/Cellar/llvm/19.1.7/bin/clang")
+set(CMAKE_CXX_COMPILER "/opt/homebrew/Cellar/llvm/19.1.7/bin/clang++")
 
 project(rife-ncnn-vulkan)
 
@@ -10,9 +12,29 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE release CACHE STRING "Choose the type of build" FORCE)
 endif()
 
-option(USE_SYSTEM_NCNN "build with system libncnn" OFF)
-option(USE_SYSTEM_WEBP "build with system libwebp" OFF)
+option(USE_SYSTEM_NCNN "build with system libncnn" ON)
+option(USE_SYSTEM_WEBP "build with system libwebp" ON)
 option(USE_STATIC_MOLTENVK "link moltenvk static library" OFF)
+
+if(APPLE)
+    link_directories(/opt/homebrew/Cellar/libomp/19.1.7/lib)
+    include_directories(/opt/homebrew/Cellar/libomp/19.1.7/include)
+    
+    # 设置 OpenMP 标志
+    set(OpenMP_C "${CMAKE_C_COMPILER}")
+    set(OpenMP_CXX "${CMAKE_CXX_COMPILER}")
+    set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp")
+    set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp")
+    
+    # 明确指定 libomp 库路径
+    set(OpenMP_C_LIB_NAMES "omp")
+    set(OpenMP_CXX_LIB_NAMES "omp")
+    set(OpenMP_omp_LIBRARY "/opt/homebrew/Cellar/libomp/19.1.7/lib/libomp.dylib")
+    
+    # 启用 OpenMP
+    set(OpenMP_C_FOUND true)
+    set(OpenMP_CXX_FOUND true)
+endif()
 
 find_package(Threads)
 find_package(OpenMP)
@@ -54,29 +76,31 @@ else()
 endif()
 
 if(USE_SYSTEM_NCNN)
-    set(GLSLANG_TARGET_DIR "GLSLANG-NOTFOUND" CACHE PATH "Absolute path to glslangTargets.cmake directory")
-    if(NOT GLSLANG_TARGET_DIR AND NOT DEFINED ENV{GLSLANG_TARGET_DIR})
-        message(WARNING "GLSLANG_TARGET_DIR must be defined! USE_SYSTEM_NCNN will be turned off.")
-        set(USE_SYSTEM_NCNN OFF)
-    else()
-        message(STATUS "Using glslang install located at ${GLSLANG_TARGET_DIR}")
+    find_package(Threads)
+    find_package(glslang)
+    # set(GLSLANG_TARGET_DIR "GLSLANG-NOTFOUND" CACHE PATH "Absolute path to glslangTargets.cmake directory")
+    # if(NOT GLSLANG_TARGET_DIR AND NOT DEFINED ENV{GLSLANG_TARGET_DIR})
+    #     message(WARNING "GLSLANG_TARGET_DIR must be defined! USE_SYSTEM_NCNN will be turned off.")
+    #     set(USE_SYSTEM_NCNN OFF)
+    # else()
+    #     message(STATUS "Using glslang install located at ${GLSLANG_TARGET_DIR}")
 
-        find_package(Threads)
+    #     find_package(Threads)
 
-        include("${GLSLANG_TARGET_DIR}/OSDependentTargets.cmake")
-        include("${GLSLANG_TARGET_DIR}/OGLCompilerTargets.cmake")
-        if(EXISTS "${GLSLANG_TARGET_DIR}/HLSLTargets.cmake")
-            # hlsl support can be optional
-            include("${GLSLANG_TARGET_DIR}/HLSLTargets.cmake")
-        endif()
-        include("${GLSLANG_TARGET_DIR}/glslangTargets.cmake")
-        include("${GLSLANG_TARGET_DIR}/SPIRVTargets.cmake")
+    #     include("${GLSLANG_TARGET_DIR}/OSDependentTargets.cmake")
+    #     include("${GLSLANG_TARGET_DIR}/OGLCompilerTargets.cmake")
+    #     if(EXISTS "${GLSLANG_TARGET_DIR}/HLSLTargets.cmake")
+    #         # hlsl support can be optional
+    #         include("${GLSLANG_TARGET_DIR}/HLSLTargets.cmake")
+    #     endif()
+    #     include("${GLSLANG_TARGET_DIR}/glslangTargets.cmake")
+    #     include("${GLSLANG_TARGET_DIR}/SPIRVTargets.cmake")
 
-        if (NOT TARGET glslang OR NOT TARGET SPIRV)
-            message(WARNING "glslang or SPIRV target not found! USE_SYSTEM_NCNN will be turned off.")
-            set(USE_SYSTEM_NCNN OFF)
-        endif()
-    endif()
+    #     if (NOT TARGET glslang OR NOT TARGET SPIRV)
+    #         message(WARNING "glslang or SPIRV target not found! USE_SYSTEM_NCNN will be turned off.")
+    #         set(USE_SYSTEM_NCNN OFF)
+    #     endif()
+    # endif()
 endif()
 
 if(USE_SYSTEM_NCNN)
@@ -291,3 +315,36 @@ if(USE_STATIC_MOLTENVK)
 endif()
 
 target_link_libraries(rife-ncnn-vulkan ${RIFE_LINK_LIBRARIES})
+
+# Mac 动态库目标
+if(APPLE)
+    add_library(rife_processor SHARED
+        rife_processor.mm
+        rife_processor.h
+        rife.cpp
+        rife.h
+        warp.cpp
+    )
+
+    # 设置动态库属性
+    set_target_properties(rife_processor PROPERTIES
+        FRAMEWORK TRUE
+        FRAMEWORK_VERSION A
+        MACOSX_FRAMEWORK_IDENTIFIER com.yourcompany.rife_processor
+        VERSION 1.0.0
+        SOVERSION 1.0.0
+        PUBLIC_HEADER rife_processor.h
+        # 设置输出目录为 build 目录
+        LIBRARY_OUTPUT_DIRECTORY "/Users/anzhi.zhu/projects/MetalPlayer"
+        RUNTIME_OUTPUT_DIRECTORY "/Users/anzhi.zhu/projects/MetalPlayer"
+    )
+
+    # 链接必要的依赖
+    target_link_libraries(rife_processor ${RIFE_LINK_LIBRARIES})
+
+    # 设置包含目录
+    target_include_directories(rife_processor PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+    )
+endif()
